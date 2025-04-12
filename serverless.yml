@@ -1,0 +1,58 @@
+service: onduty-slack
+
+frameworkVersion: '3'
+
+provider:
+  name: aws
+  runtime: nodejs18.x
+  region: us-east-1
+  environment:
+    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN, ssm:/onduty-slack/slack-bot-token~true}
+    PAGERDUTY_API_TOKEN: ${env:PAGERDUTY_API_TOKEN, ssm:/onduty-slack/pagerduty-api-token~true}
+    PAGERDUTY_SCHEDULE_ID: ${env:PAGERDUTY_SCHEDULE_ID, ssm:/onduty-slack/pagerduty-schedule-id~true}
+    LINEAR_WEBHOOK_SECRET: ${env:LINEAR_WEBHOOK_SECRET, ssm:/onduty-slack/linear-webhook-secret~true}
+  
+functions:
+  syncOnCall:
+    handler: dist/handler.syncOnCall
+    events:
+      - schedule: rate(1 hour)
+      - http:
+          path: sync
+          method: get
+  linearWebhook:
+    handler: dist/handler.handleLinearWebhook
+    events:
+      - http:
+          path: linear/webhook
+          method: post
+
+plugins:
+  - serverless-offline
+  - serverless-dotenv-plugin
+
+custom:
+  dotenv:
+    path: .env
+    include:
+      - SLACK_BOT_TOKEN
+      - PAGERDUTY_API_TOKEN
+      - PAGERDUTY_SCHEDULE_ID
+      - LINEAR_WEBHOOK_SECRET
+    required:
+      - SLACK_BOT_TOKEN
+      - PAGERDUTY_API_TOKEN
+      - PAGERDUTY_SCHEDULE_ID
+      - LINEAR_WEBHOOK_SECRET
+
+package:
+  patterns:
+    - '!node_modules/**'
+    - '!test/**'
+    - '!dist/**'
+    - '!.git/**'
+    - '!.gitignore'
+    - '!.eslintrc.js'
+    - '!jest.config.js'
+    - '!tsconfig.json'
+    - '!serverless.yml' 

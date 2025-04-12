@@ -1,0 +1,182 @@
+{
+  "/Users/james/Code/elicit/onduty-slack/serverless.yml": {
+    "versionFramework": "4.12.0",
+    "servicePath": "/Users/james/Code/elicit/onduty-slack/serverless.yml",
+    "serviceConfigFileName": "serverless.yml",
+    "service": {
+      "service": "onduty-slack",
+      "frameworkVersion": "4",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs18.x",
+        "region": "us-east-1",
+        "environment": {
+          "SLACK_BOT_TOKEN": "<REDACTED>",
+          "PAGERDUTY_API_TOKEN": "<REDACTED>",
+          "PAGERDUTY_SCHEDULE_ID": "${ssm:onduty-slack/pagerduty-schedule-id~true}",
+          "SLACK_USER_GROUP_ID": "${ssm:onduty-slack/slack-user-group-id~true}"
+        }
+      },
+      "functions": {
+        "syncOnCall": {
+          "handler": "src/handler.syncOnCall",
+          "events": [
+            {
+              "schedule": "rate(1 hour)"
+            }
+          ]
+        }
+      },
+      "plugins": [
+        "serverless-offline",
+        "serverless-dotenv-plugin"
+      ],
+      "custom": {
+        "dotenv": {
+          "path": ".env",
+          "include": [
+            "SLACK_BOT_TOKEN",
+            "PAGERDUTY_API_TOKEN",
+            "PAGERDUTY_SCHEDULE_ID",
+            "SLACK_USER_GROUP_ID"
+          ],
+          "required": [
+            "SLACK_BOT_TOKEN",
+            "PAGERDUTY_API_TOKEN",
+            "PAGERDUTY_SCHEDULE_ID",
+            "SLACK_USER_GROUP_ID"
+          ]
+        }
+      },
+      "package": {
+        "patterns": [
+          "!node_modules/**",
+          "!test/**",
+          "!dist/**",
+          "!.git/**",
+          "!.gitignore",
+          "!.eslintrc.js",
+          "!jest.config.js",
+          "!tsconfig.json",
+          "!serverless.yml"
+        ]
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs18.x",
+      "region": "us-east-1",
+      "environment": {
+        "SLACK_BOT_TOKEN": "<REDACTED>",
+        "PAGERDUTY_API_TOKEN": "<REDACTED>",
+        "PAGERDUTY_SCHEDULE_ID": "${ssm:onduty-slack/pagerduty-schedule-id~true}",
+        "SLACK_USER_GROUP_ID": "${ssm:onduty-slack/slack-user-group-id~true}"
+      }
+    },
+    "error": {
+      "message": "You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".",
+      "stack": "Error: You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".\n    at Authentication.getAuthenticatedData (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:557:10892)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async Authentication.authenticate (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:559:21808)\n    at async TraditionalRunner.resolveVariablesAndAuthenticate (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:563:2377)\n    at async TraditionalRunner.run (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:1053:27896)\n    at async route (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:1084:2779)\n    at async Object.run (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:1085:3661)\n    at async run2 (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:1085:4814)"
+    },
+    "serviceRawFile": "service: onduty-slack\n\nframeworkVersion: '4'\n\nprovider:\n  name: aws\n  runtime: nodejs18.x\n  region: us-east-1\n  environment:\n    SLACK_BOT_TOKEN: ${ssm:onduty-slack/slack-bot-token~true}\n    PAGERDUTY_API_TOKEN: ${ssm:onduty-slack/pagerduty-api-token~true}\n    PAGERDUTY_SCHEDULE_ID: ${ssm:onduty-slack/pagerduty-schedule-id~true}\n    SLACK_USER_GROUP_ID: ${ssm:onduty-slack/slack-user-group-id~true}\n  \nfunctions:\n  syncOnCall:\n    handler: src/handler.syncOnCall\n    events:\n      - schedule: rate(1 hour)\n\nplugins:\n  - serverless-offline\n  - serverless-dotenv-plugin\n\ncustom:\n  dotenv:\n    path: .env\n    include:\n      - SLACK_BOT_TOKEN\n      - PAGERDUTY_API_TOKEN\n      - PAGERDUTY_SCHEDULE_ID\n      - SLACK_USER_GROUP_ID\n    required:\n      - SLACK_BOT_TOKEN\n      - PAGERDUTY_API_TOKEN\n      - PAGERDUTY_SCHEDULE_ID\n      - SLACK_USER_GROUP_ID\n\npackage:\n  patterns:\n    - '!node_modules/**'\n    - '!test/**'\n    - '!dist/**'\n    - '!.git/**'\n    - '!.gitignore'\n    - '!.eslintrc.js'\n    - '!jest.config.js'\n    - '!tsconfig.json'\n    - '!serverless.yml' ",
+    "command": [
+      "offline"
+    ],
+    "options": {},
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  },
+  "/Users/james/Code/elicit/onduty-slack/serverless.local.yml": {
+    "versionFramework": "4.12.0",
+    "servicePath": "/Users/james/Code/elicit/onduty-slack/serverless.local.yml",
+    "serviceConfigFileName": "serverless.local.yml",
+    "service": {
+      "service": "onduty-slack",
+      "frameworkVersion": "3",
+      "provider": {
+        "name": "aws",
+        "runtime": "nodejs18.x",
+        "region": "us-east-1",
+        "environment": {
+          "SLACK_BOT_TOKEN": "<REDACTED>",
+          "PAGERDUTY_API_TOKEN": "<REDACTED>",
+          "PAGERDUTY_SCHEDULE_ID": "${env:PAGERDUTY_SCHEDULE_ID}",
+          "SLACK_USER_GROUP_ID": "${env:SLACK_USER_GROUP_ID}"
+        }
+      },
+      "functions": {
+        "syncOnCall": {
+          "handler": "src/handler.syncOnCall",
+          "events": [
+            {
+              "schedule": "rate(1 hour)"
+            }
+          ]
+        }
+      },
+      "plugins": [
+        "serverless-offline",
+        "serverless-dotenv-plugin"
+      ],
+      "custom": {
+        "dotenv": {
+          "path": ".env",
+          "include": [
+            "SLACK_BOT_TOKEN",
+            "PAGERDUTY_API_TOKEN",
+            "PAGERDUTY_SCHEDULE_ID",
+            "SLACK_USER_GROUP_ID"
+          ],
+          "required": [
+            "SLACK_BOT_TOKEN",
+            "PAGERDUTY_API_TOKEN",
+            "PAGERDUTY_SCHEDULE_ID",
+            "SLACK_USER_GROUP_ID"
+          ]
+        }
+      },
+      "package": {
+        "patterns": [
+          "!node_modules/**",
+          "!test/**",
+          "!dist/**",
+          "!.git/**",
+          "!.gitignore",
+          "!.eslintrc.js",
+          "!jest.config.js",
+          "!tsconfig.json",
+          "!serverless.yml"
+        ]
+      }
+    },
+    "provider": {
+      "name": "aws",
+      "runtime": "nodejs18.x",
+      "region": "us-east-1",
+      "environment": {
+        "SLACK_BOT_TOKEN": "<REDACTED>",
+        "PAGERDUTY_API_TOKEN": "<REDACTED>",
+        "PAGERDUTY_SCHEDULE_ID": "${env:PAGERDUTY_SCHEDULE_ID}",
+        "SLACK_USER_GROUP_ID": "${env:SLACK_USER_GROUP_ID}"
+      }
+    },
+    "error": {
+      "message": "You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".",
+      "stack": "Error: You must sign in or use a license key with Serverless Framework V.4 and later versions. Please use \"serverless login\".\n    at Authentication.getAuthenticatedData (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:557:10892)\n    at process.processTicksAndRejections (node:internal/process/task_queues:95:5)\n    at async Authentication.authenticate (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:559:21808)\n    at async TraditionalRunner.resolveVariablesAndAuthenticate (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:563:2377)\n    at async TraditionalRunner.run (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:1053:27896)\n    at async route (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:1084:2779)\n    at async Object.run (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:1085:3661)\n    at async run2 (file:///Users/james/.serverless/releases/4.12.0/package/dist/sf-core.js:1085:4814)"
+    },
+    "serviceRawFile": "service: onduty-slack\n\nframeworkVersion: '3'\n\nprovider:\n  name: aws\n  runtime: nodejs18.x\n  region: us-east-1\n  environment:\n    SLACK_BOT_TOKEN: ${env:SLACK_BOT_TOKEN}\n    PAGERDUTY_API_TOKEN: ${env:PAGERDUTY_API_TOKEN}\n    PAGERDUTY_SCHEDULE_ID: ${env:PAGERDUTY_SCHEDULE_ID}\n    SLACK_USER_GROUP_ID: ${env:SLACK_USER_GROUP_ID}\n  \nfunctions:\n  syncOnCall:\n    handler: src/handler.syncOnCall\n    events:\n      - schedule: rate(1 hour)\n\nplugins:\n  - serverless-offline\n  - serverless-dotenv-plugin\n\ncustom:\n  dotenv:\n    path: .env\n    include:\n      - SLACK_BOT_TOKEN\n      - PAGERDUTY_API_TOKEN\n      - PAGERDUTY_SCHEDULE_ID\n      - SLACK_USER_GROUP_ID\n    required:\n      - SLACK_BOT_TOKEN\n      - PAGERDUTY_API_TOKEN\n      - PAGERDUTY_SCHEDULE_ID\n      - SLACK_USER_GROUP_ID\n\npackage:\n  patterns:\n    - '!node_modules/**'\n    - '!test/**'\n    - '!dist/**'\n    - '!.git/**'\n    - '!.gitignore'\n    - '!.eslintrc.js'\n    - '!jest.config.js'\n    - '!tsconfig.json'\n    - '!serverless.yml'",
+    "command": [
+      "offline"
+    ],
+    "options": {
+      "config": "serverless.local.yml"
+    },
+    "serviceProviderAwsCfStackId": null,
+    "serviceProviderAwsCfStackCreated": null,
+    "serviceProviderAwsCfStackUpdated": null,
+    "serviceProviderAwsCfStackStatus": null,
+    "serviceProviderAwsCfStackOutputs": null
+  }
+}
