@@ -22,3 +22,7 @@ build/
 # OS
 .DS_Store
 Thumbs.db 
+.serverless/cloudformation-template-create-stack.json
+.serverless/cloudformation-template-update-stack.json
+.serverless/onduty-slack.zip
+.serverless/serverless-state.json
