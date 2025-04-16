@@ -29,6 +29,31 @@ export const syncOnCall = async (_event: APIGatewayProxyEvent): Promise<APIGatew
   if (!slackUser.ok || !slackUser.user) {
     throw new Error(`Could not find Slack user for email: ${onDutyUser.email}`);
   }
+
+  // Find the urgent channel
+  const channels = await slack.conversations.list({
+    types: "public_channel",
+  });
+
+  if (!channels.ok || !channels.channels) {
+    throw new Error("Failed to fetch Slack channels");
+  }
+
+  const urgentChannel = channels.channels.find((channel) => channel.name === "urgent");
+  if (!urgentChannel) {
+    throw new Error("Could not find #urgent channel");
+  }
+
+  // Update channel description
+  const updateResult = await slack.conversations.setTopic({
+    channel: urgentChannel.id!,
+    topic: `On-duty engineer (during working hours): ${onDutyUser.name}`,
+  });
+
+  if (!updateResult.ok) {
+    throw new Error("Failed to update channel description");
+  }
+
   return {
     statusCode: 200,
     body: JSON.stringify({ success: true }),
