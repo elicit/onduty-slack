@@ -1,4 +1,4 @@
-import { LinearWebhookPayload, isRelevantLinearEvent, BUG_LABEL_ID, USER_QUESTION_LABEL_ID } from "./handler";
+import { LinearWebhookPayload, isRelevantLinearEvent, BUG_LABEL_ID, USER_QUESTION_LABEL_ID } from "./linear";
 
 interface IssueData {
   id: string;

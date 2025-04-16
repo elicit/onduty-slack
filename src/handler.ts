@@ -1,58 +1,16 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
-import { WebClient } from "@slack/web-api";
-import axios from "axios";
-import { LinearWebhooks, LINEAR_WEBHOOK_SIGNATURE_HEADER, LINEAR_WEBHOOK_TS_FIELD } from "@linear/sdk";
-import { z } from "zod";
-
-interface PagerDutyUser {
-  id: string;
-  name: string;
-  email: string;
-}
-
-interface PagerDutyOnCallResponse {
-  users: PagerDutyUser[];
-}
+import { isRelevantLinearEvent, verifyLinearWebhook, parseLinearWebhookPayload } from "./linear";
+import { setUrgentChannelTopic, notifyOnDutyUserInSlack } from "./slack";
+import { LINEAR_WEBHOOK_SIGNATURE_HEADER, LINEAR_WEBHOOK_TS_FIELD } from "@linear/sdk";
+import { getOnDutyUser } from "./pagerduty";
 
 export const BUG_LABEL_ID = "5b04a744-c7e8-4024-bc50-465cf1fb10f3";
 export const USER_QUESTION_LABEL_ID = "4a1d862d-2f2e-4cf3-82c1-7c78257e2c7a";
 
 export const syncOnCall = async (_event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
-  const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
   const onDutyUser = await getOnDutyUser();
-
-  // Get Slack user ID from email
-  const slackUser = await slack.users.lookupByEmail({
-    email: onDutyUser.email,
-  });
-
-  if (!slackUser.ok || !slackUser.user) {
-    throw new Error(`Could not find Slack user for email: ${onDutyUser.email}`);
-  }
-
-  // Find the urgent channel
-  const channels = await slack.conversations.list({
-    types: "public_channel",
-  });
-
-  if (!channels.ok || !channels.channels) {
-    throw new Error("Failed to fetch Slack channels");
-  }
-
-  const urgentChannel = channels.channels.find((channel) => channel.name === "urgent");
-  if (!urgentChannel) {
-    throw new Error("Could not find #urgent channel");
-  }
-
-  // Update channel description
-  const updateResult = await slack.conversations.setTopic({
-    channel: urgentChannel.id!,
-    topic: `On-duty engineer (during working hours): ${onDutyUser.name}`,
-  });
-
-  if (!updateResult.ok) {
-    throw new Error("Failed to update channel description");
-  }
+  const newTopic = `On-duty engineer (during working hours): ${onDutyUser.name}`;
+  await setUrgentChannelTopic(newTopic);
 
   return {
     statusCode: 200,
@@ -60,104 +18,20 @@ export const syncOnCall = async (_event: APIGatewayProxyEvent): Promise<APIGatew
   };
 };
 
-async function getOnDutyUser() {
-  const pagerDutyToken = process.env.PAGERDUTY_API_TOKEN;
-  const scheduleId = process.env.PAGERDUTY_SCHEDULE_ID;
-
-  if (!pagerDutyToken || !scheduleId) {
-    throw new Error("Missing required environment variables");
-  }
-
-  // Get current on-call user from PagerDuty
-  const response = await axios.get<PagerDutyOnCallResponse>(`https://api.pagerduty.com/schedules/${scheduleId}/users`, {
-    headers: {
-      Authorization: `Token token=${pagerDutyToken}`,
-      Accept: "application/vnd.pagerduty+json;version=2",
-    },
-  });
-
-  const onCallUser = response.data.users[0];
-
-  if (!onCallUser) {
-    throw new Error("No on-call user found in PagerDuty schedule");
-  }
-  return onCallUser;
-}
-
-const LinearWebhookPayloadSchema = z.object({
-  action: z.string(),
-  type: z.string(),
-  url: z.string(),
-  data: z.object({
-    id: z.string(),
-    title: z.string(),
-    priorityLabel: z.string(),
-    labelIds: z.array(z.string()),
-  }),
-  updatedFrom: z
-    .object({
-      priorityLabel: z.string().optional(),
-      labelIds: z.array(z.string()).optional(),
-    })
-    .optional(),
-});
-
-export type LinearWebhookPayload = z.infer<typeof LinearWebhookPayloadSchema>;
-
-export function isRelevantLinearEvent(payload: LinearWebhookPayload): boolean {
-  if (payload.type !== "Issue") {
-    return false;
-  }
-
-  const isUrgent = payload.data.priorityLabel === "Urgent";
-  const hasRelevantLabel = payload.data.labelIds.some((id) => [BUG_LABEL_ID, USER_QUESTION_LABEL_ID].includes(id));
-
-  if (payload.action === "create") {
-    return isUrgent && hasRelevantLabel;
-  }
-
-  if (payload.action === "update" && payload.updatedFrom) {
-    // If priorityLabel is not in updatedFrom, it means it hasn't changed
-    const wasUrgent =
-      payload.updatedFrom.priorityLabel === undefined ? isUrgent : payload.updatedFrom.priorityLabel === "Urgent";
-    // If labelIds is not in updatedFrom, it means labels haven't changed
-    const hadRelevantLabel =
-      payload.updatedFrom.labelIds === undefined
-        ? hasRelevantLabel
-        : payload.updatedFrom.labelIds.some((id) => [BUG_LABEL_ID, USER_QUESTION_LABEL_ID].includes(id));
-
-    // Notify only if the issue became relevant (wasn't before and is now)
-    return !(wasUrgent && hadRelevantLabel) && isUrgent && hasRelevantLabel;
-  }
-
-  return false;
-}
-
 export const handleLinearWebhook = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
-    const webhookSecret = process.env.LINEAR_WEBHOOK_SECRET;
-    if (!webhookSecret) {
-      throw new Error("Missing LINEAR_WEBHOOK_SECRET environment variable");
-    }
-
-    const webhook = new LinearWebhooks(webhookSecret);
+    const body = event.body || "{}";
     const signature = event.headers[LINEAR_WEBHOOK_SIGNATURE_HEADER];
     if (!signature) {
       throw new Error("Missing Linear webhook signature");
     }
-    const body = event.body || "{}";
+
     const rawPayload = JSON.parse(body);
     const timestamp = rawPayload[LINEAR_WEBHOOK_TS_FIELD];
 
-    // Verify the webhook signature
-    webhook.verify(Buffer.from(body), signature, timestamp);
-
-    // Parse and validate the payload using the Zod schema
-    const payloadResult = LinearWebhookPayloadSchema.safeParse(rawPayload);
-    if (!payloadResult.success) {
-      throw new Error(`Invalid Linear webhook payload: ${payloadResult.error.message}`);
-    }
-    const payload: LinearWebhookPayload = payloadResult.data;
+    // Verify and parse the webhook payload
+    verifyLinearWebhook(body, signature, timestamp);
+    const payload = parseLinearWebhookPayload(body);
 
     // Check if the event is relevant
     if (!isRelevantLinearEvent(payload)) {
@@ -170,7 +44,8 @@ export const handleLinearWebhook = async (event: APIGatewayProxyEvent): Promise<
       };
     }
 
-    await postSlackNotification(payload);
+    const onDutyUser = await getOnDutyUser();
+    await notifyOnDutyUserInSlack(payload.data.title, payload.url, onDutyUser.email);
 
     return {
       statusCode: 200,
@@ -189,40 +64,3 @@ export const handleLinearWebhook = async (event: APIGatewayProxyEvent): Promise<
     };
   }
 };
-
-async function postSlackNotification(payload: LinearWebhookPayload) {
-  const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
-  const onDutyUser = await getOnDutyUser();
-  const slackUser = await slack.users.lookupByEmail({
-    email: onDutyUser.email,
-  });
-
-  if (!slackUser.ok || !slackUser.user) {
-    throw new Error(`Could not find Slack user for email: ${onDutyUser.email}`);
-  }
-
-  // Find the #urgent channel
-  const channels = await slack.conversations.list({
-    types: "public_channel",
-  });
-
-  if (!channels.ok || !channels.channels) {
-    throw new Error("Failed to fetch Slack channels");
-  }
-
-  // TODO: change to urgent
-  const urgentChannel = channels.channels.find((channel) => channel.name === "dev-notifications");
-  if (!urgentChannel) {
-    throw new Error("Could not find #urgent channel");
-  }
-
-  // Post message to #urgent
-  const message = await slack.chat.postMessage({
-    channel: urgentChannel.id!,
-    text: `Hey <@${slackUser.user.id}>, there's a new urgent issue: ${payload.data.title}\n${payload.url}`,
-  });
-
-  if (!message.ok) {
-    throw new Error("Failed to post message to #urgent");
-  }
-}
