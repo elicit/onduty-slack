@@ -1,19 +1,13 @@
 # OnDuty Slack
 
-A serverless application that syncs PagerDuty on-call schedules with Slack user groups.
+A serverless application that does a couple of tasks related to the on-duty engineer.
 
 ## Features
 
-- Automatically updates a Slack user group with the current on-call person from PagerDuty
-- Runs on an hourly schedule using AWS Lambda
-- Built with TypeScript and Serverless Framework
+As of April '25:
 
-## Prerequisites
-
-- Node.js 18.x or later
-- AWS account with appropriate permissions
-- PagerDuty account with API access
-- Slack workspace with admin permissions
+1. It sets the #urgent channel topic to note who is on-duty.
+2. If an Urgent Linear issue is created which relates to the on-duty engineers responsibilites, it notifies them in the #urgent channel.
 
 ## Setup
 
@@ -23,34 +17,55 @@ A serverless application that syncs PagerDuty on-call schedules with Slack user 
    npm install
    ```
 
-2. Configure environment variables in AWS Systems Manager Parameter Store:
+1. Configure environment variables in a .env file (see .env.sample for what is required)
 
-   - `/onduty-slack/slack-bot-token`: Your Slack bot token
-   - `/onduty-slack/pagerduty-api-token`: Your PagerDuty API token
-   - `/onduty-slack/pagerduty-schedule-id`: The ID of your PagerDuty schedule
-   - `/onduty-slack/slack-user-group-id`: The ID of your Slack user group
+1. Run the app locally:
 
-3. Deploy the application:
+   ```bash
+   npm run build
+   npm run start
+   ```
+
+1. Run the tests:
+
+   ```bash
+   npm test -- --watchAll
+   ```
+
+1. Deploy the application (requires AWS credentials in your shell):
+
    ```bash
    npm run deploy
    ```
 
-## Development
-
-- Build the project: `npm run build`
-- Run tests: `npm test`
-- Lint the code: `npm run lint`
-
-## Architecture
-
-The application consists of a single AWS Lambda function that:
-
-1. Fetches the current on-call user from PagerDuty
-2. Looks up the corresponding Slack user by email
-3. Updates the specified Slack user group with the on-call user
-
-The function runs on an hourly schedule using AWS EventBridge.
-
 ## Security
 
 All sensitive credentials are stored in AWS Systems Manager Parameter Store and are accessed securely by the Lambda function using IAM roles.
+
+Credential setup was a one-time, manual thing:
+
+```bash
+aws ssm put-parameter \
+    --name "/onduty-slack/slack-bot-token" \
+    --value "your-slack-bot-token" \
+    --type "SecureString" \
+    --description "Slack Bot Token for OnDuty Slack app"
+
+aws ssm put-parameter \
+    --name "/onduty-slack/pagerduty-api-token" \
+    --value "your-pagerduty-api-token" \
+    --type "SecureString" \
+    --description "PagerDuty API Token for OnDuty Slack app"
+
+aws ssm put-parameter \
+    --name "/onduty-slack/pagerduty-schedule-id" \
+    --value "your-pagerduty-schedule-id" \
+    --type "SecureString" \
+    --description "PagerDuty Schedule ID for OnDuty Slack app"
+
+aws ssm put-parameter \
+    --name "/onduty-slack/linear-webhook-secret" \
+    --value "your-linear-webhook-secret" \
+    --type "SecureString" \
+    --description "Linear Webhook Secret for OnDuty Slack app"
+```
