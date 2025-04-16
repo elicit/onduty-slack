@@ -1,10 +1,4 @@
-import {
-  LinearWebhookPayload,
-  isRelevantLinearEvent,
-  BUG_LABEL_ID,
-  INCIDENT_REMEDIATION_LABEL_ID,
-  TECH_DEBT_LABEL_ID,
-} from "./handler";
+import { LinearWebhookPayload, isRelevantLinearEvent, BUG_LABEL_ID, USER_QUESTION_LABEL_ID } from "./handler";
 
 interface IssueData {
   id: string;
@@ -41,9 +35,9 @@ const updatePayload = (data: Partial<IssueData> = {}, updatedFrom: Partial<Issue
 });
 
 describe("isRelevantLinearEvent", () => {
-  it("should return true for a create event with Urgent priority and a relevant label", () => {
+  it("should return true for a create event with Urgent priority relevant labels", () => {
     const payload = createPayload({
-      labelIds: [BUG_LABEL_ID],
+      labelIds: [BUG_LABEL_ID, USER_QUESTION_LABEL_ID],
     });
     expect(isRelevantLinearEvent(payload)).toBe(true);
   });
@@ -73,7 +67,7 @@ describe("isRelevantLinearEvent", () => {
   it("should return true for an update event that makes an issue relevant", () => {
     const payload = updatePayload(
       {
-        labelIds: [INCIDENT_REMEDIATION_LABEL_ID],
+        labelIds: [USER_QUESTION_LABEL_ID],
       },
       {
         labelIds: [], // was not relevant before
@@ -85,7 +79,7 @@ describe("isRelevantLinearEvent", () => {
   it("should return false for an update event that adds a relevant label to an already relevant issue", () => {
     const payload = updatePayload(
       {
-        labelIds: [BUG_LABEL_ID, INCIDENT_REMEDIATION_LABEL_ID],
+        labelIds: [BUG_LABEL_ID, USER_QUESTION_LABEL_ID],
       },
       {
         labelIds: [BUG_LABEL_ID], // was already relevant (had bug label)
@@ -97,7 +91,7 @@ describe("isRelevantLinearEvent", () => {
   it("should return true for an update event that makes an issue relevant by changing priority to Urgent", () => {
     const payload = updatePayload(
       {
-        labelIds: [BUG_LABEL_ID, INCIDENT_REMEDIATION_LABEL_ID],
+        labelIds: [BUG_LABEL_ID],
       },
       {
         priorityLabel: "Low", // was not Urgent before

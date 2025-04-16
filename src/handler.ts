@@ -14,10 +14,8 @@ interface PagerDutyOnCallResponse {
   users: PagerDutyUser[];
 }
 
-// Label IDs
 export const BUG_LABEL_ID = "5b04a744-c7e8-4024-bc50-465cf1fb10f3";
-export const INCIDENT_REMEDIATION_LABEL_ID = "b65ce122-babb-42aa-9b32-f865b7e8a606";
-export const TECH_DEBT_LABEL_ID = "14d3c314-7ef7-4773-b205-d115ca4d875c";
+export const USER_QUESTION_LABEL_ID = "4a1d862d-2f2e-4cf3-82c1-7c78257e2c7a";
 
 export const syncOnCall = async (_event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
@@ -87,9 +85,7 @@ export function isRelevantLinearEvent(payload: LinearWebhookPayload): boolean {
   }
 
   const isUrgent = payload.data.priorityLabel === "Urgent";
-  const hasRelevantLabel = payload.data.labelIds.some((id) =>
-    [BUG_LABEL_ID, INCIDENT_REMEDIATION_LABEL_ID, TECH_DEBT_LABEL_ID].includes(id)
-  );
+  const hasRelevantLabel = payload.data.labelIds.some((id) => [BUG_LABEL_ID, USER_QUESTION_LABEL_ID].includes(id));
 
   if (payload.action === "create") {
     return isUrgent && hasRelevantLabel;
@@ -103,9 +99,7 @@ export function isRelevantLinearEvent(payload: LinearWebhookPayload): boolean {
     const hadRelevantLabel =
       payload.updatedFrom.labelIds === undefined
         ? hasRelevantLabel
-        : payload.updatedFrom.labelIds.some((id) =>
-            [BUG_LABEL_ID, INCIDENT_REMEDIATION_LABEL_ID, TECH_DEBT_LABEL_ID].includes(id)
-          );
+        : payload.updatedFrom.labelIds.some((id) => [BUG_LABEL_ID, USER_QUESTION_LABEL_ID].includes(id));
 
     // Notify only if the issue became relevant (wasn't before and is now)
     return !(wasUrgent && hadRelevantLabel) && isUrgent && hasRelevantLabel;
