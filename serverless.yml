@@ -47,7 +47,6 @@ custom:
 
 package:
   patterns:
-    - '!node_modules/**'
     - '!test/**'
     - '!src/**'
     - '!.git/**'
@@ -58,4 +57,5 @@ package:
     - '!serverless.yml'
     - '!package.json'
     - '!package-lock.json'
-    - 'dist/**' 
+    - 'dist/**'
+    - 'node_modules/**' 

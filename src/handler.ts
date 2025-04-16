@@ -1,7 +1,7 @@
 import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { isRelevantLinearEvent, verifyLinearWebhook, parseLinearWebhookPayload } from "./linear";
 import { setUrgentChannelTopic, notifyOnDutyUserInSlack } from "./slack";
-import { LINEAR_WEBHOOK_SIGNATURE_HEADER, LINEAR_WEBHOOK_TS_FIELD } from "@linear/sdk";
+import { LINEAR_WEBHOOK_TS_FIELD } from "@linear/sdk";
 import { getOnDutyUser } from "./pagerduty";
 
 export const BUG_LABEL_ID = "5b04a744-c7e8-4024-bc50-465cf1fb10f3";
@@ -20,8 +20,9 @@ export const syncOnCall = async (_event: APIGatewayProxyEvent): Promise<APIGatew
 
 export const handleLinearWebhook = async (event: APIGatewayProxyEvent): Promise<APIGatewayProxyResult> => {
   try {
+    console.log("Received Linear webhook event:", event);
     const body = event.body || "{}";
-    const signature = event.headers[LINEAR_WEBHOOK_SIGNATURE_HEADER];
+    const signature = event.headers["Linear-Signature"]; // The LINEAR_WEBHOOK_SIGNATURE_HEADER const has the wrong captialisation
     if (!signature) {
       throw new Error("Missing Linear webhook signature");
     }
