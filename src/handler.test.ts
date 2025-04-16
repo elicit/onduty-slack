@@ -16,8 +16,10 @@ interface IssueData {
 const createPayload = (data: Partial<IssueData> = {}): LinearWebhookPayload => ({
   action: "create",
   type: "Issue",
+  url: "https://linear.app/created-id",
   data: {
     id: "test-id",
+    title: "Test Issue created",
     priorityLabel: "Urgent",
     labelIds: [],
     ...data,
@@ -27,8 +29,10 @@ const createPayload = (data: Partial<IssueData> = {}): LinearWebhookPayload => (
 const updatePayload = (data: Partial<IssueData> = {}, updatedFrom: Partial<IssueData> = {}): LinearWebhookPayload => ({
   action: "update",
   type: "Issue",
+  url: "https://linear.app/updated-id",
   data: {
     id: "test-id",
+    title: "Test Issue updated",
     priorityLabel: "Urgent",
     labelIds: [],
     ...data,

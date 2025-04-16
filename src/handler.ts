@@ -2,6 +2,7 @@ import { APIGatewayProxyEvent, APIGatewayProxyResult } from "aws-lambda";
 import { WebClient } from "@slack/web-api";
 import axios from "axios";
 import { LinearWebhooks, LINEAR_WEBHOOK_SIGNATURE_HEADER, LINEAR_WEBHOOK_TS_FIELD } from "@linear/sdk";
+import { z } from "zod";
 
 interface PagerDutyUser {
   id: string;
@@ -60,19 +61,25 @@ async function getOnDutyUser() {
   return onCallUser;
 }
 
-export interface LinearWebhookPayload {
-  action: string;
-  type: string;
-  data: {
-    id: string;
-    priorityLabel: string;
-    labelIds: string[];
-  };
-  updatedFrom?: {
-    priorityLabel?: string;
-    labelIds?: string[];
-  };
-}
+const LinearWebhookPayloadSchema = z.object({
+  action: z.string(),
+  type: z.string(),
+  url: z.string(),
+  data: z.object({
+    id: z.string(),
+    title: z.string(),
+    priorityLabel: z.string(),
+    labelIds: z.array(z.string()),
+  }),
+  updatedFrom: z
+    .object({
+      priorityLabel: z.string().optional(),
+      labelIds: z.array(z.string()).optional(),
+    })
+    .optional(),
+});
+
+export type LinearWebhookPayload = z.infer<typeof LinearWebhookPayloadSchema>;
 
 export function isRelevantLinearEvent(payload: LinearWebhookPayload): boolean {
   if (payload.type !== "Issue") {
@@ -120,11 +127,18 @@ export const handleLinearWebhook = async (event: APIGatewayProxyEvent): Promise<
       throw new Error("Missing Linear webhook signature");
     }
     const body = event.body || "{}";
-    const payload = JSON.parse(body);
-    const timestamp = payload[LINEAR_WEBHOOK_TS_FIELD];
+    const rawPayload = JSON.parse(body);
+    const timestamp = rawPayload[LINEAR_WEBHOOK_TS_FIELD];
 
     // Verify the webhook signature
     webhook.verify(Buffer.from(body), signature, timestamp);
+
+    // Parse and validate the payload using the Zod schema
+    const payloadResult = LinearWebhookPayloadSchema.safeParse(rawPayload);
+    if (!payloadResult.success) {
+      throw new Error(`Invalid Linear webhook payload: ${payloadResult.error.message}`);
+    }
+    const payload: LinearWebhookPayload = payloadResult.data;
 
     // Check if the event is relevant
     if (!isRelevantLinearEvent(payload)) {
@@ -137,41 +151,7 @@ export const handleLinearWebhook = async (event: APIGatewayProxyEvent): Promise<
       };
     }
 
-    // Get the on-duty user and their Slack ID
-    const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
-    const onDutyUser = await getOnDutyUser();
-    const slackUser = await slack.users.lookupByEmail({
-      email: onDutyUser.email,
-    });
-
-    if (!slackUser.ok || !slackUser.user) {
-      throw new Error(`Could not find Slack user for email: ${onDutyUser.email}`);
-    }
-
-    // Find the #urgent channel
-    const channels = await slack.conversations.list({
-      types: "public_channel",
-    });
-
-    if (!channels.ok || !channels.channels) {
-      throw new Error("Failed to fetch Slack channels");
-    }
-
-    // TODO: change to urgent
-    const urgentChannel = channels.channels.find((channel) => channel.name === "dev-notifications");
-    if (!urgentChannel) {
-      throw new Error("Could not find #urgent channel");
-    }
-
-    // Post message to #urgent
-    const message = await slack.chat.postMessage({
-      channel: urgentChannel.id!,
-      text: `Hey <@${slackUser.user.id}>, there's a new urgent issue: ${payload.data.title}\n${payload.url}`,
-    });
-
-    if (!message.ok) {
-      throw new Error("Failed to post message to #urgent");
-    }
+    await postSlackNotification(payload);
 
     return {
       statusCode: 200,
@@ -190,3 +170,40 @@ export const handleLinearWebhook = async (event: APIGatewayProxyEvent): Promise<
     };
   }
 };
+
+async function postSlackNotification(payload: LinearWebhookPayload) {
+  const slack = new WebClient(process.env.SLACK_BOT_TOKEN);
+  const onDutyUser = await getOnDutyUser();
+  const slackUser = await slack.users.lookupByEmail({
+    email: onDutyUser.email,
+  });
+
+  if (!slackUser.ok || !slackUser.user) {
+    throw new Error(`Could not find Slack user for email: ${onDutyUser.email}`);
+  }
+
+  // Find the #urgent channel
+  const channels = await slack.conversations.list({
+    types: "public_channel",
+  });
+
+  if (!channels.ok || !channels.channels) {
+    throw new Error("Failed to fetch Slack channels");
+  }
+
+  // TODO: change to urgent
+  const urgentChannel = channels.channels.find((channel) => channel.name === "dev-notifications");
+  if (!urgentChannel) {
+    throw new Error("Could not find #urgent channel");
+  }
+
+  // Post message to #urgent
+  const message = await slack.chat.postMessage({
+    channel: urgentChannel.id!,
+    text: `Hey <@${slackUser.user.id}>, there's a new urgent issue: ${payload.data.title}\n${payload.url}`,
+  });
+
+  if (!message.ok) {
+    throw new Error("Failed to post message to #urgent");
+  }
+}
