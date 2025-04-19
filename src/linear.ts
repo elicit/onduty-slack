@@ -11,12 +11,12 @@ export const LinearWebhookPayloadSchema = z.object({
   data: z.object({
     id: z.string(),
     title: z.string(),
-    priorityLabel: z.string(),
+    priority: z.number(),
     labelIds: z.array(z.string()),
   }),
   updatedFrom: z
     .object({
-      priorityLabel: z.string().optional(),
+      priority: z.number().optional(),
       labelIds: z.array(z.string()).optional(),
     })
     .optional(),
@@ -29,7 +29,7 @@ export function isRelevantLinearEvent(payload: LinearWebhookPayload): boolean {
     return false;
   }
 
-  const isUrgent = payload.data.priorityLabel === "Urgent";
+  const isUrgent = payload.data.priority === 1;
   const hasRelevantLabel = payload.data.labelIds.some((id) => [BUG_LABEL_ID, USER_QUESTION_LABEL_ID].includes(id));
 
   if (payload.action === "create") {
@@ -37,9 +37,8 @@ export function isRelevantLinearEvent(payload: LinearWebhookPayload): boolean {
   }
 
   if (payload.action === "update" && payload.updatedFrom) {
-    // If priorityLabel is not in updatedFrom, it means it hasn't changed
-    const wasUrgent =
-      payload.updatedFrom.priorityLabel === undefined ? isUrgent : payload.updatedFrom.priorityLabel === "Urgent";
+    // If priority is not in updatedFrom, it means it hasn't changed
+    const wasUrgent = payload.updatedFrom.priority === undefined ? isUrgent : payload.updatedFrom.priority === 1;
     // If labelIds is not in updatedFrom, it means labels haven't changed
     const hadRelevantLabel =
       payload.updatedFrom.labelIds === undefined
