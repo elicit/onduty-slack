@@ -1,20 +1,42 @@
+import type { ConversationsListResponse } from "@slack/web-api";
 import { WebClient } from "@slack/web-api";
 
 async function getUrgentChannel(slack: WebClient) {
-  const channels = await slack.conversations.list({
-    types: "public_channel",
-  });
+  try {
+    let cursor: string | undefined;
+    let allChannels: ConversationsListResponse["channels"] = [];
 
-  if (!channels.ok || !channels.channels) {
-    throw new Error("Failed to fetch Slack channels");
+    do {
+      const response = await slack.conversations.list({
+        types: "public_channel",
+        cursor: cursor,
+        limit: 1000,
+      });
+
+      if (!response.ok) {
+        console.error("Slack API error:", response.error);
+        throw new Error(`Failed to fetch Slack channels: ${response.error}`);
+      }
+
+      if (!response.channels) {
+        throw new Error("No channels returned from Slack API");
+      }
+
+      allChannels = allChannels.concat(response.channels);
+      cursor = response.response_metadata?.next_cursor;
+    } while (cursor);
+
+    const urgentChannel = allChannels.find((channel) => channel.name === "urgent");
+    if (!urgentChannel) {
+      console.error("Could not find #urgent channel in any of the returned channels");
+      throw new Error("Could not find #urgent channel");
+    }
+
+    return urgentChannel;
+  } catch (error) {
+    console.error("Error in getUrgentChannel:", error);
+    throw error;
   }
-
-  const urgentChannel = channels.channels.find((channel) => channel.name === "urgent");
-  if (!urgentChannel) {
-    throw new Error("Could not find #urgent channel");
-  }
-
-  return urgentChannel;
 }
 
 async function getUserByEmail(slack: WebClient, email: string) {
