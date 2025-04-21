@@ -86,12 +86,16 @@ export async function notifyOnDutyUserInSlack(issueTitle: string, issueUrl: stri
   const slackUser = await getUserByEmail(slack, onDutyUserEmail);
   const urgentChannel = await getUrgentChannel(slack);
 
-  const message = await slack.chat.postMessage({
-    channel: urgentChannel.id!,
-    text: `Hey <@${slackUser.id}>, there's a new urgent issue: ${issueTitle}\n${issueUrl}`,
-  });
-
-  if (!message.ok) {
-    throw new Error("Failed to post message to #urgent");
-  }
+  // TODO: Re-enable this if Linear's native view subscriptions are not working for us.
+  //       (James): I didn't know that Linear supported Slack subscriptions for views,
+  //       so built out this notification feature manually. I'd *prefer* to use Linear's native
+  //       feature so that there's less for us to maintain. However, if it ends up not working
+  //       we can disable that and use this instead.
+  // const message = await slack.chat.postMessage({
+  //   channel: urgentChannel.id!,
+  //   text: `Hey <@${slackUser.id}>, there's a new urgent issue: ${issueTitle}\n${issueUrl}`,
+  // });
+  // if (!message.ok) {
+  //   throw new Error("Failed to post message to #urgent");
+  // }
 }
